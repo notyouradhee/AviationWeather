@@ -1,0 +1,27 @@
+name: Daily Streak Maintainer
+
+on:
+  schedule:
+    # Runs every day at 12:00 PM UTC (which is around evening for you)
+    - cron: '0 12 * * *'
+  workflow_dispatch: # This allows you to also trigger it manually by clicking a button on GitHub!
+
+jobs:
+  maintain-streak:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Git identity
+        run: |
+          # We use your exact email so GitHub assigns the green square to YOU, not a bot!
+          git config --global user.name "notyouradhee"
+          git config --global user.email "guptaadit2004@gmail.com"
+
+      - name: Create and push empty commit
+        run: |
+          git commit --allow-empty -m "chore: maintain GitHub streak 🚀"
+          git push origin main
