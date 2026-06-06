@@ -29,4 +29,5 @@ jobs:
       - name: Create and push empty commit
         run: |
           git commit --allow-empty -m "chore: maintain GitHub streak 🚀"
+          git pull --rebase origin main
           git push origin main
