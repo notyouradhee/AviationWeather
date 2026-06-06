@@ -6,6 +6,9 @@ on:
     - cron: '0 12 * * *'
   workflow_dispatch: # This allows you to also trigger it manually by clicking a button on GitHub!
 
+permissions:
+  contents: write
+
 jobs:
   maintain-streak:
     runs-on: ubuntu-latest
