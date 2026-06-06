@@ -5,6 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.aviationweather.data.MetarRepository
 import com.example.aviationweather.data.RetrofitInstance
@@ -21,11 +24,24 @@ class MainActivity : ComponentActivity() {
         val viewModel  = MetarViewModel(repository)
 
         setContent {
-            AviationWeatherTheme {
-                HomeScreen(
-                    viewModel = viewModel,
-                    modifier  = Modifier.fillMaxSize(),
-                )
+            val systemInDark = androidx.compose.foundation.isSystemInDarkTheme()
+            var userPreferredDark by remember { mutableStateOf<Boolean?>(null) }
+            val dark = userPreferredDark ?: systemInDark
+
+            AviationWeatherTheme(darkTheme = dark) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    HomeScreen(
+                        viewModel = viewModel,
+                        isDarkTheme = dark,
+                        onToggleTheme = {
+                            userPreferredDark = !dark
+                        },
+                        modifier  = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }

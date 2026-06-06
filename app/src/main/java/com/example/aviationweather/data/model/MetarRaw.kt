@@ -21,7 +21,7 @@ data class MetarRaw(
     val dewp: Double?,
     val altim: Double?,
     val wxString: String?,
-    @SerializedName("fltcat") val flightCategory: String?,
+    @SerializedName("fltCat") val flightCategory: String?,
     val rawOb: String?,
     val name: String?,
     val clouds: List<Cloud>?,

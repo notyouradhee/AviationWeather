@@ -3,6 +3,7 @@ package com.example.aviationweather.data
 import com.example.aviationweather.data.model.Cloud
 import com.example.aviationweather.data.model.DecodedMetar
 import com.example.aviationweather.data.model.MetarRaw
+import com.example.aviationweather.data.model.RunwayWindCalculation
 
 /**
  * Single source of truth for METAR data.
@@ -25,7 +26,7 @@ class MetarRepository(private val api: AviationWeatherApi) {
             val rawList = api.getMetar(ids = icaoCode.uppercase())
             val raw = rawList.firstOrNull()
                 ?: throw IllegalStateException("No METAR data found for $icaoCode")
-            Result.success(raw.toDecoded())
+            Result.success(raw.toDecoded(icaoCode))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -33,20 +34,107 @@ class MetarRepository(private val api: AviationWeatherApi) {
 
     // ── MetarRaw → DecodedMetar mapping ─────────────────────────────
 
-    private fun MetarRaw.toDecoded() = DecodedMetar(
-        airportCode    = name.orEmpty(),
-        windDirection  = wdir ?: 0,
-        windSpeed      = wspd ?: 0,
-        windGust       = wgst ?: 0,
-        visibility     = formatVisibility(visib),
-        cloudLayers    = clouds?.map { it.format() } ?: emptyList(),
-        temperature    = formatTemp(temp),
-        dewpoint       = formatTemp(dewp),
-        altimeter      = formatAltimeter(altim),
-        presentWeather = decodeWxString(wxString),
-        flightCategory = flightCategory ?: computeFlightCategory(visib, clouds),
-        rawMetar       = rawOb.orEmpty(),
-    )
+    private fun MetarRaw.toDecoded(icaoCode: String): DecodedMetar {
+        val windDir = wdir ?: 0
+        val windSpd = wspd ?: 0
+        val windGst = wgst ?: 0
+        
+        // Detect calm or variable winds
+        val isVrb = rawOb?.contains("VRB") == true
+        val isCalm = windSpd == 0
+        val isWindVariableOrCalm = isVrb || isCalm
+        
+        val airportInfo = AirportsData.list.firstOrNull { it.icao.equals(icaoCode, ignoreCase = true) }
+        val runwayCalculations = if (airportInfo != null && !isWindVariableOrCalm) {
+            val computedList = mutableListOf<RunwayWindCalculation>()
+            airportInfo.runways.forEach { runwayPair ->
+                val parts = runwayPair.split("/")
+                parts.forEach { rwy ->
+                    val trimmedRwy = rwy.trim()
+                    if (trimmedRwy.isNotEmpty()) {
+                        val hdg = getRunwayHeading(trimmedRwy)
+                        
+                        // Wind formulas:
+                        // theta (diff) = windDir - hdg
+                        val diffRad = (windDir - hdg) * Math.PI / 180.0
+                        val headwind = windSpd * kotlin.math.cos(diffRad)
+                        val crosswind = windSpd * kotlin.math.sin(diffRad)
+                        
+                        computedList.add(
+                            RunwayWindCalculation(
+                                runwayLabel = "Runway $trimmedRwy",
+                                heading = hdg,
+                                headwindComponent = headwind,
+                                crosswindComponent = kotlin.math.abs(crosswind),
+                                isLeftCrosswind = crosswind < 0,
+                                isRecommended = false
+                            )
+                        )
+                    }
+                }
+            }
+            
+            // Find the recommended runway direction (maximizes headwind component)
+            if (computedList.isNotEmpty()) {
+                val recommended = computedList.maxByOrNull { it.headwindComponent }
+                if (recommended != null) {
+                    val index = computedList.indexOf(recommended)
+                    computedList[index] = recommended.copy(isRecommended = true)
+                }
+            }
+            computedList
+        } else if (airportInfo != null && isWindVariableOrCalm) {
+            // Calm/Variable wind: populate runways with 0 components
+            val computedList = mutableListOf<RunwayWindCalculation>()
+            airportInfo.runways.forEach { runwayPair ->
+                val parts = runwayPair.split("/")
+                parts.forEach { rwy ->
+                    val trimmedRwy = rwy.trim()
+                    if (trimmedRwy.isNotEmpty()) {
+                        val hdg = getRunwayHeading(trimmedRwy)
+                        computedList.add(
+                            RunwayWindCalculation(
+                                runwayLabel = "Runway $trimmedRwy",
+                                heading = hdg,
+                                headwindComponent = 0.0,
+                                crosswindComponent = 0.0,
+                                isLeftCrosswind = false,
+                                isRecommended = false
+                            )
+                        )
+                    }
+                }
+            }
+            computedList
+        } else {
+            emptyList()
+        }
+
+        return DecodedMetar(
+            airportCode    = name.orEmpty(),
+            windDirection  = windDir,
+            windSpeed      = windSpd,
+            windGust       = windGst,
+            visibility     = formatVisibility(visib),
+            cloudLayers    = clouds?.map { it.format() } ?: emptyList(),
+            temperature    = formatTemp(temp),
+            dewpoint       = formatTemp(dewp),
+            altimeter      = formatAltimeter(altim),
+            presentWeather = decodeWxString(wxString),
+            flightCategory = flightCategory ?: computeFlightCategory(visib, clouds),
+            rawMetar       = rawOb.orEmpty(),
+            runways        = runwayCalculations,
+            isWindVariableOrCalm = isWindVariableOrCalm
+        )
+    }
+
+    private fun getRunwayHeading(runwayName: String): Int {
+        val digits = runwayName.filter { it.isDigit() }
+        val number = digits.toIntOrNull() ?: 0
+        val heading = number * 10
+        return if (heading == 0) 360 else heading
+    }
+
 
     // ── Formatting helpers ──────────────────────────────────────────
 
@@ -68,7 +156,7 @@ class MetarRepository(private val api: AviationWeatherApi) {
             "CLR", "SKC" -> "CLR"
             else  -> cover.orEmpty()
         }
-        return if (base != null) "$label at ${base * 100} ft" else label
+        return if (base != null) "$label at $base ft" else label
     }
 
     // ── wxString decoder ────────────────────────────────────────────
@@ -129,13 +217,13 @@ class MetarRepository(private val api: AviationWeatherApi) {
         return clouds
             .asSequence()
             .filter { it.cover in ceilingCodes && it.base != null }
-            .map { it.base!! * 100 }
+            .map { it.base!! }
             .minOrNull()
     }
 
     private fun parseVisibilityMiles(raw: String?): Double? {
         if (raw.isNullOrBlank()) return null
-        val cleaned = raw.trim().removeSuffix("SM").removePrefix("P")
+        val cleaned = raw.trim().removeSuffix("SM").removePrefix("P").removeSuffix("+")
         if (cleaned.contains(" ")) {
             val parts = cleaned.split(" ")
             val whole = parts.getOrNull(0)?.toDoubleOrNull() ?: return null

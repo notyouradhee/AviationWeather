@@ -19,5 +19,7 @@ data class DecodedMetar(
     val presentWeather: String    = "None",
     val flightCategory: String    = "Unknown",
     val rawMetar: String          = "",
+    val runways: List<RunwayWindCalculation> = emptyList(),
+    val isWindVariableOrCalm: Boolean = false,
 )
 
