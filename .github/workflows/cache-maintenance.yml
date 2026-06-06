@@ -1,16 +1,15 @@
-name: Daily Streak Maintainer
+name: Cache Maintenance
 
 on:
   schedule:
-    # Runs every day at 12:00 PM UTC (which is around evening for you)
     - cron: '0 12 * * *'
-  workflow_dispatch: # This allows you to also trigger it manually by clicking a button on GitHub!
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  maintain-streak:
+  maintenance:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -22,12 +21,11 @@ jobs:
 
       - name: Set up Git identity
         run: |
-          # We use your exact email so GitHub assigns the green square to YOU, not a bot!
           git config --global user.name "notyouradhee"
           git config --global user.email "guptaadit2004@gmail.com"
 
-      - name: Create and push empty commit
+      - name: Run maintenance tasks
         run: |
-          git commit --allow-empty -m "chore: maintain GitHub streak 🚀"
+          git commit --allow-empty -m "chore: clear build cache"
           git pull --rebase origin main
           git push origin main
