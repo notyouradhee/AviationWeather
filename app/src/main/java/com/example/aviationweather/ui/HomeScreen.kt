@@ -221,7 +221,9 @@ fun HomeScreen(
                     icaoInput = icaoInput,
                     onIcaoInputChange = { icaoInput = it },
                     onSearch = { viewModel.searchAirport(it) },
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .imePadding()
                 )
 
                 // Help/Search Guide Dialog
