@@ -54,7 +54,12 @@ app/src/main/java/com/example/aviationweather/
 │   └── AirportsData.kt              # Airport code dictionary
 └── ui/
     ├── MetarViewModel.kt            # StateFlow-based ViewModel
-    ├── HomeScreen.kt                # Compose UI screen
+    ├── HomeScreen.kt                # Compose UI orchestrator
+    ├── components/                  # Modular UI elements
+    │   ├── AirportDrawer.kt         # Slide-out airport directory
+    │   ├── RunwayCard.kt            # Crosswind/headwind calculators
+    │   ├── SearchBar.kt             # Search & suggestion logic
+    │   └── WeatherCard.kt           # METAR display & conditions
     └── theme/                       # Material 3 theming
 
 app/src/test/java/com/example/aviationweather/
@@ -96,8 +101,13 @@ app/src/test/java/com/example/aviationweather/
 - Exposes a `StateFlow<UiState>` matching the network states (`Idle`, `Loading`, `Success`, `Error`).
 
 ### `ui/HomeScreen.kt`
-> **Role:** The single Compose screen the user sees.
-- Handles user input, state rendering, and displays the decoded weather and runway wind data beautifully.
+> **Role:** The main Compose screen orchestrator.
+- Manages state injection, layout scaffolding, and navigation drawer interactions.
+- Delegates rendering to modular UI elements in the `components/` directory (e.g., `WeatherCard`, `RunwayCard`).
+
+### `ui/components/`
+> **Role:** Modular Jetpack Compose UI elements.
+- Extracted elements like `SearchBar`, `AirportDrawer`, `RunwayCard`, and `WeatherCard` to maintain clean separation of concerns and keep files small.
 
 ---
 
