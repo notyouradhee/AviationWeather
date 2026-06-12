@@ -25,6 +25,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.example.aviationweather.data.AirportsData
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.ui.platform.LocalFocusManager
 
 @Composable
 fun SearchBar(
@@ -34,9 +37,19 @@ fun SearchBar(
     modifier: Modifier = Modifier
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     val colorScheme = MaterialTheme.colorScheme
     
     var isTextFieldFocused by remember { mutableStateOf(false) }
+    @OptIn(ExperimentalLayoutApi::class)
+    val isImeVisible = WindowInsets.isImeVisible
+
+    LaunchedEffect(isImeVisible) {
+        if (!isImeVisible && isTextFieldFocused) {
+            focusManager.clearFocus()
+        }
+    }
+
     val suggestions = remember(icaoInput) {
         if (icaoInput.length >= 1) {
             val query = icaoInput.trim().lowercase()
@@ -50,7 +63,7 @@ fun SearchBar(
             emptyList()
         }
     }
-    val showSuggestions = isTextFieldFocused && suggestions.isNotEmpty()
+    val showSuggestions = isTextFieldFocused && isImeVisible && suggestions.isNotEmpty()
 
     Column(
         modifier = modifier
