@@ -130,17 +130,6 @@ git clone <repo-url> && cd AviationWeather
 
 ---
 
-## Next Steps / Future Work
-
-- [x] Add unit tests for `MetarRepository` mapping logic
-- [x] Calculate runway crosswind/headwind components
-- [x] Wire `MetarViewModel` into `HomeScreen`
-- [ ] Implement local database caching (Room) for offline access
-- [ ] Add map integration to visually display the airport
-- [ ] Incorporate TAF (Terminal Aerodrome Forecast) data
-
----
-
 ## License
 
 This project is for educational purposes.
